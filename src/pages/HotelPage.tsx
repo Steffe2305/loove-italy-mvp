@@ -6,10 +6,11 @@ import {
   createDemoBookingProof,
   type LooveBookingProof,
 } from "../lib/booking"
+
 import {
-  publishBookingToIpfs,
-  type IpfsPublishResult,
-} from "../lib/ipfsBooking"
+  createBookingProof,
+  type CaminoBookingPayload,
+} from "../lib/caminoBooking"
 
 type BookingStep = "select" | "summary" | "confirmed"
 
@@ -19,30 +20,46 @@ export default function HotelPage() {
 
   const [hotel, setHotel] = useState<LooveHotel | null>(null)
   const [loading, setLoading] = useState(true)
+
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
+
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
-  const [bookingStep, setBookingStep] = useState<BookingStep>("select")
-  const [bookingProof, setBookingProof] = useState<LooveBookingProof | null>(null)
+
+  const [bookingStep, setBookingStep] =
+    useState<BookingStep>("select")
+
+  const [bookingProof, setBookingProof] =
+    useState<LooveBookingProof | null>(null)
+
   const [publishing, setPublishing] = useState(false)
-  const [ipfsResult, setIpfsResult] = useState<IpfsPublishResult | null>(null)
-  const [ipfsError, setIpfsError] = useState("")
+
+  const [caminoResult, setCaminoResult] = useState<any>(null)
+
+  const [caminoError, setCaminoError] = useState("")
 
   useEffect(() => {
     loadLooveHotels()
       .then((hotels) => {
-        const selectedHotel = hotels.find((item) => item.id === Number(id))
+        const selectedHotel = hotels.find(
+          (item) => item.id === Number(id)
+        )
+
         setHotel(selectedHotel || null)
       })
-      .catch((err) => console.error("Error loading hotel", err))
+      .catch((err) =>
+        console.error("Error loading hotel", err)
+      )
       .finally(() => setLoading(false))
   }, [id])
 
   const selectedRoom = useMemo(() => {
     if (!hotel) return null
+
     return (
-      hotel.rooms.find((room) => room.roomId === selectedRoomId) ||
-      hotel.rooms[0]
+      hotel.rooms.find(
+        (room) => room.roomId === selectedRoomId
+      ) || hotel.rooms[0]
     )
   }, [hotel, selectedRoomId])
 
@@ -51,14 +68,18 @@ export default function HotelPage() {
 
     const start = new Date(checkIn)
     const end = new Date(checkOut)
+
     const diff = Math.ceil(
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+      (end.getTime() - start.getTime()) /
+        (1000 * 60 * 60 * 24)
     )
 
     return diff > 0 ? diff : 1
   }, [checkIn, checkOut])
 
-  const total = selectedRoom ? selectedRoom.price * nights : 0
+  const total = selectedRoom
+    ? selectedRoom.price * nights
+    : 0
 
   async function handleBookingClick() {
     if (bookingStep === "select") {
@@ -66,10 +87,14 @@ export default function HotelPage() {
       return
     }
 
-    if (bookingStep === "summary") {
+    if (
+      bookingStep === "summary" &&
+      hotel &&
+      selectedRoom
+    ) {
       const proof = createDemoBookingProof({
-        hotel: hotel!,
-        room: selectedRoom!,
+        hotel,
+        room: selectedRoom,
         checkIn,
         checkOut,
         nights,
@@ -77,19 +102,55 @@ export default function HotelPage() {
       })
 
       setBookingProof(proof)
+
       setBookingStep("confirmed")
+
       setPublishing(true)
-      setIpfsResult(null)
-      setIpfsError("")
+
+      setCaminoResult(null)
+
+      setCaminoError("")
 
       try {
-        const result = await publishBookingToIpfs(proof)
-        setIpfsResult(result)
+        const payload: CaminoBookingPayload = {
+          type: "LOOVE_BOOKING_PROOF",
+          version: "1.0",
+          createdAt: new Date().toISOString(),
+
+          hotel: {
+            name: hotel.name,
+            destination: hotel.destination,
+            room: selectedRoom.roomName,
+          },
+
+          guest: {
+            name: "Demo Guest",
+            email: "guest@loove.demo",
+          },
+
+          booking: {
+            checkIn,
+            checkOut,
+            guests: selectedRoom.maxGuests,
+          },
+
+          total: {
+            amount: total,
+            currency: "EUR",
+          },
+
+          source: "Loove Italy",
+          status: "CONFIRMED",
+        }
+
+        const result = await createBookingProof(payload)
+
+        setCaminoResult(result)
       } catch (error) {
-        setIpfsError(
+        setCaminoError(
           error instanceof Error
             ? error.message
-            : "Errore durante la pubblicazione IPFS"
+            : "Errore registrazione Camino"
         )
       } finally {
         setPublishing(false)
@@ -100,7 +161,9 @@ export default function HotelPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
-        <p className="text-neutral-500">Caricamento proposta Loove...</p>
+        <p className="text-neutral-500">
+          Caricamento proposta Loove...
+        </p>
       </div>
     )
   }
@@ -108,7 +171,10 @@ export default function HotelPage() {
   if (!hotel || !selectedRoom) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
-        <h1 className="mb-4 text-4xl font-bold">Proposta non trovata</h1>
+        <h1 className="mb-4 text-4xl font-bold">
+          Proposta non trovata
+        </h1>
+
         <button
           onClick={() => navigate("/")}
           className="rounded-full bg-pink-500 px-6 py-3 font-bold text-white"
@@ -123,13 +189,18 @@ export default function HotelPage() {
     <div className="min-h-screen bg-white text-neutral-900">
       <section
         className="relative h-[72vh] bg-cover bg-center"
-        style={{ backgroundImage: `url(${hotel.image})` }}
+        style={{
+          backgroundImage: `url(${hotel.image})`,
+        }}
       >
         <div className="absolute inset-0 bg-black/45" />
 
         <header className="relative z-20 px-6 py-6">
           <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/20 bg-white/15 px-5 py-3 text-white backdrop-blur-xl">
-            <button onClick={() => navigate("/")} className="text-2xl font-bold">
+            <button
+              onClick={() => navigate("/")}
+              className="text-2xl font-bold"
+            >
               Loove Italy
             </button>
 
@@ -157,7 +228,8 @@ export default function HotelPage() {
             </h1>
 
             <p className="mb-3 text-lg font-semibold text-white/85">
-              {hotel.type} ┬À {hotel.destination}, {hotel.region}
+              {hotel.type} · {hotel.destination},{" "}
+              {hotel.region}
             </p>
 
             <p className="max-w-3xl text-xl leading-8 text-white/85">
@@ -178,21 +250,27 @@ export default function HotelPage() {
           </h2>
 
           <p className="mb-10 text-lg leading-8 text-neutral-600">
-            Questa proposta può essere combinata con esperienze, transfer e
-            servizi locali per creare un viaggio completo in un unico flusso.
+            Questa proposta può essere combinata con
+            esperienze, transfer e servizi locali per creare
+            un viaggio completo in un unico flusso.
           </p>
 
-          <h3 className="mb-6 text-2xl font-bold">Camere disponibili</h3>
+          <h3 className="mb-6 text-2xl font-bold">
+            Camere disponibili
+          </h3>
 
           <div className="mb-14 space-y-5">
             {hotel.rooms.map((room) => {
-              const isSelected = selectedRoom.roomId === room.roomId
+              const isSelected =
+                selectedRoom.roomId === room.roomId
 
               return (
                 <div
                   key={room.roomId}
                   className={`rounded-[28px] border bg-white p-6 shadow-sm transition ${
-                    isSelected ? "border-pink-500 shadow-lg" : "border-neutral-200"
+                    isSelected
+                      ? "border-pink-500 shadow-lg"
+                      : "border-neutral-200"
                   }`}
                 >
                   <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
@@ -206,14 +284,17 @@ export default function HotelPage() {
                       </p>
 
                       <p className="text-sm font-semibold text-neutral-500">
-                        Max {room.maxGuests} ospiti ┬À{" "}
-                        {room.available ? "Disponibile" : "Non disponibile"}
+                        Max {room.maxGuests} ospiti ·{" "}
+                        {room.available
+                          ? "Disponibile"
+                          : "Non disponibile"}
                       </p>
                     </div>
 
                     <div className="text-left md:text-right">
                       <p className="text-3xl font-bold">
                         €{room.price}
+
                         <span className="text-sm font-medium text-neutral-500">
                           {" "}
                           / notte
@@ -223,10 +304,14 @@ export default function HotelPage() {
                       <button
                         onClick={() => {
                           setSelectedRoomId(room.roomId)
+
                           setBookingStep("select")
+
                           setBookingProof(null)
-                          setIpfsResult(null)
-                          setIpfsError("")
+
+                          setCaminoResult(null)
+
+                          setCaminoError("")
                         }}
                         className={`mt-4 rounded-full px-5 py-3 text-sm font-bold transition ${
                           isSelected
@@ -234,7 +319,9 @@ export default function HotelPage() {
                             : "bg-pink-500 text-white hover:bg-pink-600"
                         }`}
                       >
-                        {isSelected ? "Camera selezionata" : "Seleziona camera"}
+                        {isSelected
+                          ? "Camera selezionata"
+                          : "Seleziona camera"}
                       </button>
                     </div>
                   </div>
@@ -253,11 +340,17 @@ export default function HotelPage() {
                 key={experience.id}
                 className="rounded-[28px] border border-neutral-200 bg-neutral-50 p-6"
               >
-                <h4 className="mb-2 text-xl font-bold">{experience.title}</h4>
+                <h4 className="mb-2 text-xl font-bold">
+                  {experience.title}
+                </h4>
+
                 <p className="mb-5 leading-7 text-neutral-600">
                   {experience.description}
                 </p>
-                <p className="font-bold text-pink-500">€{experience.price}</p>
+
+                <p className="font-bold text-pink-500">
+                  €{experience.price}
+                </p>
               </div>
             ))}
           </div>
@@ -270,7 +363,9 @@ export default function HotelPage() {
                 Prenotazione
               </p>
 
-              <h3 className="mb-3 text-3xl font-bold">{selectedRoom.roomName}</h3>
+              <h3 className="mb-3 text-3xl font-bold">
+                {selectedRoom.roomName}
+              </h3>
 
               <p className="mb-8 text-neutral-500">
                 A partire da{" "}
@@ -286,10 +381,14 @@ export default function HotelPage() {
                   value={checkIn}
                   onChange={(e) => {
                     setCheckIn(e.target.value)
+
                     setBookingStep("select")
+
                     setBookingProof(null)
-                    setIpfsResult(null)
-                    setIpfsError("")
+
+                    setCaminoResult(null)
+
+                    setCaminoError("")
                   }}
                   className="w-full rounded-2xl border border-neutral-200 px-4 py-4 outline-none focus:border-pink-500"
                 />
@@ -299,10 +398,14 @@ export default function HotelPage() {
                   value={checkOut}
                   onChange={(e) => {
                     setCheckOut(e.target.value)
+
                     setBookingStep("select")
+
                     setBookingProof(null)
-                    setIpfsResult(null)
-                    setIpfsError("")
+
+                    setCaminoResult(null)
+
+                    setCaminoError("")
                   }}
                   className="w-full rounded-2xl border border-neutral-200 px-4 py-4 outline-none focus:border-pink-500"
                 />
@@ -310,16 +413,21 @@ export default function HotelPage() {
                 <div className="rounded-2xl bg-neutral-50 p-5">
                   <div className="mb-3 flex justify-between text-sm text-neutral-600">
                     <span>Notti</span>
+
                     <span>{nights}</span>
                   </div>
 
                   <div className="mb-3 flex justify-between text-sm text-neutral-600">
                     <span>Camera</span>
-                    <span>€{selectedRoom.price} / notte</span>
+
+                    <span>
+                      €{selectedRoom.price} / notte
+                    </span>
                   </div>
 
                   <div className="flex justify-between border-t border-neutral-200 pt-4 text-xl font-bold">
                     <span>Totale demo</span>
+
                     <span>€{total}</span>
                   </div>
                 </div>
@@ -328,8 +436,10 @@ export default function HotelPage() {
                   <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5 text-sm leading-6 text-neutral-700">
                     <strong>Riepilogo pronto.</strong>
                     <br />
-                    Il prossimo click confermer├á la prenotazione demo e
-                    pubblicher├á automaticamente il booking proof su IPFS.
+                    Il prossimo click confermerà la
+                    prenotazione demo e registrerà
+                    automaticamente il booking proof su
+                    Camino.
                   </div>
                 )}
 
@@ -346,7 +456,7 @@ export default function HotelPage() {
           ) : (
             <div className="text-center">
               <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-pink-500 text-3xl text-white">
-                Ô£ô
+                ✓
               </div>
 
               <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-pink-500">
@@ -359,103 +469,72 @@ export default function HotelPage() {
 
               {publishing && (
                 <div className="mb-6 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-sm font-semibold text-pink-700">
-                  Pubblicazione automatica booking proof su IPFS in corso...
+                  Registrazione automatica booking proof
+                  su Camino in corso...
                 </div>
               )}
 
-              {ipfsResult && (
+              {caminoResult && (
                 <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-left text-sm leading-7 text-green-800">
-                  <p className="font-bold">Booking proof pubblicato su IPFS</p>
-                  <p className="break-all">
-                    <strong>CID:</strong> {ipfsResult.cid}
+                  <p className="font-bold">
+                    Booking proof registrata su Camino
                   </p>
+
                   <p className="break-all">
-                    <strong>IPFS URI:</strong> {ipfsResult.ipfsUri}
+                    <strong>IPFS URI:</strong>{" "}
+                    {caminoResult.ipfsUri}
                   </p>
+
                   <p className="break-all">
-                    <strong>Gateway:</strong> {ipfsResult.gatewayUrl}
+                    <strong>Transaction Hash:</strong>{" "}
+                    {caminoResult.txHash}
+                  </p>
+
+                  <p className="break-all">
+                    <strong>
+                      Camino Content ID:
+                    </strong>{" "}
+                    {caminoResult.contentId}
                   </p>
                 </div>
               )}
 
-              {ipfsError && (
+              {caminoError && (
                 <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-left text-sm leading-7 text-red-700">
-                  <strong>IPFS non pubblicato in locale.</strong>
+                  <strong>
+                    Registrazione Camino fallita.
+                  </strong>
                   <br />
-                  {ipfsError}
+                  {caminoError}
                 </div>
               )}
 
               <div className="mb-6 rounded-2xl bg-neutral-50 p-5 text-left text-sm leading-7 text-neutral-700">
                 <p>
                   <strong>Booking ID:</strong>{" "}
-                  {bookingProof?.bookingId || "LOOVE-DEMO"}
+                  {bookingProof?.bookingId ||
+                    "LOOVE-DEMO"}
                 </p>
+
                 <p>
-                  <strong>Check-in:</strong> {bookingProof?.stay.checkIn}
+                  <strong>Check-in:</strong>{" "}
+                  {bookingProof?.stay.checkIn}
                 </p>
+
                 <p>
-                  <strong>Check-out:</strong> {bookingProof?.stay.checkOut}
+                  <strong>Check-out:</strong>{" "}
+                  {bookingProof?.stay.checkOut}
                 </p>
+
                 <p>
-                  <strong>Notti:</strong> {bookingProof?.stay.nights}
+                  <strong>Notti:</strong>{" "}
+                  {bookingProof?.stay.nights}
                 </p>
+
                 <p>
-                  <strong>Totale:</strong> €{bookingProof?.total.amount}
+                  <strong>Totale:</strong> €
+                  {bookingProof?.total.amount}
                 </p>
-              </div>
-
-              <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5 text-left text-sm leading-6 text-neutral-700">
-                <strong>Ready for Camino proof.</strong>
-                <br />
-                Il booking JSON è pronto per essere registrato on-chain come
-                prova di prenotazione.
-              </div>
-
-              <div className="mt-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-neutral-500">
-                    Booking JSON Preview
-                  </h4>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          JSON.stringify(bookingProof, null, 2)
-                        )
-                      }}
-                      className="rounded-full border border-neutral-300 px-4 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100"
-                    >
-                      Copia JSON
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        const json = JSON.stringify(bookingProof, null, 2)
-                        const blob = new Blob([json], {
-                          type: "application/json",
-                        })
-
-                        const url = URL.createObjectURL(blob)
-                        const link = document.createElement("a")
-                        link.href = url
-                        link.download = `${
-                          bookingProof?.bookingId || "loove-booking"
-                        }.json`
-                        link.click()
-                        URL.revokeObjectURL(url)
-                      }}
-                      className="rounded-full bg-neutral-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-neutral-700"
-                    >
-                      Scarica JSON
-                    </button>
-                  </div>
-                </div>
-
-                <pre className="max-h-[320px] overflow-auto rounded-2xl bg-neutral-950 p-5 text-left text-xs leading-6 text-green-400">
-                  {JSON.stringify(bookingProof, null, 2)}
-                </pre>
               </div>
 
               <button
@@ -471,5 +550,3 @@ export default function HotelPage() {
     </div>
   )
 }
-
-
