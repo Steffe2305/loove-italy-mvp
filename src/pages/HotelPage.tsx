@@ -10,6 +10,17 @@ import { createBookingProof } from "../lib/caminoBooking"
 
 type BookingStep = "select" | "summary" | "confirmed"
 
+type NftReadyBookingProof = LooveBookingProof & {
+  nftVoucher: {
+    voucherType: "NFT_READY_BOOKING_VOUCHER"
+    nftStatus: "READY_TO_MINT"
+    transferable: true
+    resaleEnabled: true
+    network: "Camino Network"
+    note: string
+  }
+}
+
 export default function HotelPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -20,7 +31,7 @@ export default function HotelPage() {
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [bookingStep, setBookingStep] = useState<BookingStep>("select")
-  const [bookingProof, setBookingProof] = useState<LooveBookingProof | null>(null)
+  const [bookingProof, setBookingProof] = useState<NftReadyBookingProof | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [caminoResult, setCaminoResult] = useState<any>(null)
   const [caminoError, setCaminoError] = useState("")
@@ -70,14 +81,27 @@ export default function HotelPage() {
         total,
       })
 
-      setBookingProof(proof)
+      const nftReadyProof: NftReadyBookingProof = {
+        ...proof,
+        nftVoucher: {
+          voucherType: "NFT_READY_BOOKING_VOUCHER",
+          nftStatus: "READY_TO_MINT",
+          transferable: true,
+          resaleEnabled: true,
+          network: "Camino Network",
+          note:
+            "This booking proof is ready to evolve into a transferable NFT voucher in a future Loove Italy release.",
+        },
+      }
+
+      setBookingProof(nftReadyProof)
       setBookingStep("confirmed")
       setPublishing(true)
       setCaminoResult(null)
       setCaminoError("")
 
       try {
-        const result = await createBookingProof(proof)
+        const result = await createBookingProof(nftReadyProof)
         setCaminoResult(result)
       } catch (error) {
         setCaminoError(
@@ -321,7 +345,8 @@ export default function HotelPage() {
                     <strong>Riepilogo pronto.</strong>
                     <br />
                     Il prossimo click confermerà la prenotazione demo, pubblicherà
-                    il booking proof su IPFS e lo registrerà automaticamente su Camino.
+                    il booking proof su IPFS, lo registrerà su Camino e lo renderà
+                    NFT-ready.
                   </div>
                 )}
 
@@ -351,7 +376,7 @@ export default function HotelPage() {
 
               {publishing && (
                 <div className="mb-6 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-sm font-semibold text-pink-700">
-                  Pubblicazione IPFS e registrazione Camino in corso...
+                  Pubblicazione IPFS, registrazione Camino e preparazione NFT-ready in corso...
                 </div>
               )}
 
@@ -379,6 +404,26 @@ export default function HotelPage() {
 
                   <p className="break-all">
                     <strong>Camino Content ID:</strong> {caminoResult.contentId}
+                  </p>
+                </div>
+              )}
+
+              {bookingProof?.nftVoucher && (
+                <div className="mb-6 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-5 text-left text-sm leading-7 text-fuchsia-800">
+                  <p className="font-bold">Voucher NFT-ready</p>
+                  <p>
+                    <strong>Status:</strong> {bookingProof.nftVoucher.nftStatus}
+                  </p>
+                  <p>
+                    <strong>Transferibile:</strong>{" "}
+                    {bookingProof.nftVoucher.transferable ? "Sì" : "No"}
+                  </p>
+                  <p>
+                    <strong>Rivendita abilitabile:</strong>{" "}
+                    {bookingProof.nftVoucher.resaleEnabled ? "Sì" : "No"}
+                  </p>
+                  <p>
+                    <strong>Network:</strong> {bookingProof.nftVoucher.network}
                   </p>
                 </div>
               )}
