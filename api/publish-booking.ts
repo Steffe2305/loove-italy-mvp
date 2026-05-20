@@ -4,28 +4,21 @@ export const config = {
   runtime: "nodejs",
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    })
+    return res.status(405).json({ error: "Method not allowed" })
   }
 
   const pinataJwt = process.env.PINATA_JWT
 
   if (!pinataJwt) {
-    return new Response(
-      JSON.stringify({ error: "Missing PINATA_JWT environment variable" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    )
+    return res.status(500).json({
+      error: "Missing PINATA_JWT environment variable",
+    })
   }
 
   try {
-    const booking = await req.json()
+    const booking = req.body
 
     const pinataBody = {
       pinataContent: booking,
@@ -33,6 +26,12 @@ export default async function handler(req: Request) {
         name: `loove-booking-${booking.bookingId || Date.now()}`,
       },
     }
+
+    const controller = new AbortController()
+
+    const timeout = setTimeout(() => {
+      controller.abort()
+    }, 15000)
 
     const response = await fetch(
       "https://api.pinata.cloud/pinning/pinJSONToIPFS",
@@ -43,46 +42,32 @@ export default async function handler(req: Request) {
           Authorization: `Bearer ${pinataJwt}`,
         },
         body: JSON.stringify(pinataBody),
+        signal: controller.signal,
       }
     )
 
+    clearTimeout(timeout)
+
     if (!response.ok) {
       const errorText = await response.text()
-      return new Response(
-        JSON.stringify({
-          error: "Pinata upload failed",
-          details: errorText,
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+
+      return res.status(500).json({
+        error: "Pinata upload failed",
+        details: errorText,
+      })
     }
 
     const data = await response.json()
 
-    return new Response(
-      JSON.stringify({
-        cid: data.IpfsHash,
-        ipfsUri: `ipfs://${data.IpfsHash}`,
-        gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
-    )
+    return res.status(200).json({
+      cid: data.IpfsHash,
+      ipfsUri: `ipfs://${data.IpfsHash}`,
+      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
+    })
   } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: "Unexpected error",
-        details: String(error),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    )
+    return res.status(500).json({
+      error: "Unexpected error",
+      details: String(error),
+    })
   }
 }
