@@ -47,18 +47,45 @@ const gallery = [
   "https://images.unsplash.com/photo-1582719508461-905c673771fd?q=80&w=900&auto=format&fit=crop",
 ]
 
+type BookingStep = "form" | "loading" | "success"
+
 export default function HotelPage() {
   const navigate = useNavigate()
   const [selectedRoom, setSelectedRoom] = useState(rooms[0])
+  const [bookingOpen, setBookingOpen] = useState(false)
+  const [bookingStep, setBookingStep] = useState<BookingStep>("form")
+  const [customerName, setCustomerName] = useState("")
+  const [customerDetails, setCustomerDetails] = useState("")
 
   const total = useMemo(() => {
     const numeric = Number(selectedRoom.price.replace("€", "").replace(".", "").trim())
     return new Intl.NumberFormat("it-IT", {
       style: "currency",
       currency: "EUR",
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(numeric * 4)
   }, [selectedRoom])
+
+  const bookingCode = useMemo(() => {
+    return `LOOVE-TM-${Math.floor(1000 + Math.random() * 9000)}`
+  }, [bookingStep])
+
+  function openBooking() {
+    setBookingOpen(true)
+    setBookingStep("form")
+  }
+
+  function closeBooking() {
+    setBookingOpen(false)
+    setBookingStep("form")
+  }
+
+  function confirmBooking() {
+    setBookingStep("loading")
+    window.setTimeout(() => {
+      setBookingStep("success")
+    }, 1700)
+  }
 
   return (
     <div className="min-h-screen bg-[#fff8f7] text-[#111027]">
@@ -70,13 +97,19 @@ export default function HotelPage() {
 
           <nav className="hidden items-center gap-10 text-sm font-bold lg:flex">
             {["Soggiorni", "Volo", "Hotel", "Eventi", "Taxi e NCC", "Tour", "TripMixer AI"].map((item) => (
-              <span key={item} className={item === "Hotel" ? "text-rose-500" : "text-neutral-950"}>{item}</span>
+              <span key={item} className={item === "Hotel" ? "text-rose-500" : "text-neutral-950"}>
+                {item}
+              </span>
             ))}
           </nav>
 
           <div className="flex items-center gap-3">
-            <button className="hidden rounded-full border border-rose-200 px-5 py-3 text-sm font-black text-rose-500 md:block">♡</button>
-            <button className="rounded-full bg-rose-500 px-5 py-3 text-sm font-black text-white shadow-[0_16px_35px_rgba(244,63,94,0.28)]">Area Loover</button>
+            <button className="hidden rounded-full border border-rose-200 px-5 py-3 text-sm font-black text-rose-500 md:block">
+              ♡
+            </button>
+            <button className="rounded-full bg-rose-500 px-5 py-3 text-sm font-black text-white shadow-[0_16px_35px_rgba(244,63,94,0.28)]">
+              Area Loover
+            </button>
           </div>
         </div>
       </header>
@@ -84,21 +117,32 @@ export default function HotelPage() {
       <section className="relative overflow-hidden">
         <div
           className="relative h-[530px] bg-cover bg-center md:h-[590px]"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=2400&auto=format&fit=crop')" }}
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=2400&auto=format&fit=crop')",
+          }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-black/76 via-black/34 to-black/16" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
 
           <div className="relative z-10 mx-auto flex h-full max-w-[1500px] flex-col justify-end px-5 pb-10 md:px-10">
-            <p className="mb-8 text-xs font-semibold text-white/75">Home › Hotel › Costiera Amalfitana › Positano › Hotel Miramare Positano</p>
+            <p className="mb-8 text-xs font-semibold text-white/75">
+              Home › Hotel › Costiera Amalfitana › Positano › Hotel Miramare Positano
+            </p>
 
             <div className="mb-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/18 px-4 py-2 text-xs font-black text-white backdrop-blur-xl">● Loove Verified</span>
-              <span className="rounded-full bg-white/14 px-4 py-2 text-xs font-semibold text-white/82 backdrop-blur-xl">Struttura verificata</span>
+              <span className="rounded-full bg-white/18 px-4 py-2 text-xs font-black text-white backdrop-blur-xl">
+                ● Loove Verified
+              </span>
+              <span className="rounded-full bg-white/14 px-4 py-2 text-xs font-semibold text-white/82 backdrop-blur-xl">
+                Struttura verificata
+              </span>
             </div>
 
             <h1 className="max-w-3xl text-5xl font-black leading-[0.92] tracking-[-0.06em] text-white md:text-7xl">
-              Hotel Miramare<br />Positano
+              Hotel Miramare
+              <br />
+              Positano
             </h1>
 
             <div className="mt-5 flex flex-wrap items-center gap-5 text-sm font-bold text-white">
@@ -109,13 +153,18 @@ export default function HotelPage() {
 
             <div className="mt-5 flex flex-wrap gap-3 text-xs font-bold text-white/92">
               {["Vista Mare", "Piscina Infinity", "Spa & Wellness", "Parcheggio", "Wi‑Fi Gratuito"].map((x) => (
-                <span key={x} className="rounded-full bg-black/24 px-3 py-2 backdrop-blur-xl">{x}</span>
+                <span key={x} className="rounded-full bg-black/24 px-3 py-2 backdrop-blur-xl">
+                  {x}
+                </span>
               ))}
             </div>
 
             <div className="mt-8 flex flex-wrap items-end justify-between gap-5">
               <div className="flex gap-4">
-                <button className="rounded-2xl bg-rose-500 px-8 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(244,63,94,0.35)]">
+                <button
+                  onClick={openBooking}
+                  className="rounded-2xl bg-rose-500 px-8 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(244,63,94,0.35)] transition hover:-translate-y-0.5 hover:bg-rose-600"
+                >
                   Book with TripMixer AI ✨
                 </button>
                 <button className="rounded-2xl border border-white/35 bg-white/10 px-8 py-4 text-sm font-black text-white backdrop-blur-xl">
@@ -125,9 +174,17 @@ export default function HotelPage() {
 
               <div className="hidden gap-3 lg:flex">
                 {gallery.map((img) => (
-                  <div key={img} className="h-24 w-24 rounded-2xl border-2 border-white bg-cover bg-center shadow-xl" style={{ backgroundImage: `url('${img}')` }} />
+                  <div
+                    key={img}
+                    className="h-24 w-24 rounded-2xl border-2 border-white bg-cover bg-center shadow-xl"
+                    style={{ backgroundImage: `url('${img}')` }}
+                  />
                 ))}
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-center text-sm font-black text-neutral-950 shadow-xl">+24<br />Foto</div>
+                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-center text-sm font-black text-neutral-950 shadow-xl">
+                  +24
+                  <br />
+                  Foto
+                </div>
               </div>
             </div>
           </div>
@@ -142,7 +199,9 @@ export default function HotelPage() {
                 <h2 className="text-3xl font-black tracking-[-0.04em]">Scegli la tua camera</h2>
                 <p className="mt-1 text-sm text-neutral-500">11 tipologie disponibili</p>
               </div>
-              <button className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black shadow-sm">☷ Filtra camere</button>
+              <button className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black shadow-sm">
+                ☷ Filtra camere
+              </button>
             </div>
 
             <div className="space-y-5">
@@ -156,8 +215,15 @@ export default function HotelPage() {
                       active ? "border-rose-400 ring-4 ring-rose-100" : "border-black/5"
                     }`}
                   >
-                    <div className="relative h-64 bg-cover bg-center md:h-full" style={{ backgroundImage: `url('${room.image}')` }}>
-                      {room.tag && <span className="absolute left-4 top-4 rounded-full bg-rose-500 px-4 py-2 text-xs font-black text-white">{room.tag}</span>}
+                    <div
+                      className="relative h-64 bg-cover bg-center md:h-full"
+                      style={{ backgroundImage: `url('${room.image}')` }}
+                    >
+                      {room.tag && (
+                        <span className="absolute left-4 top-4 rounded-full bg-rose-500 px-4 py-2 text-xs font-black text-white">
+                          {room.tag}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex min-h-[220px] flex-col justify-between p-6">
@@ -166,16 +232,25 @@ export default function HotelPage() {
                           <h3 className="text-xl font-black">{room.name}</h3>
                           <span className="text-2xl text-neutral-400">♡</span>
                         </div>
-                        <p className="mt-2 text-sm text-neutral-500">{room.size} · {room.guests}</p>
+                        <p className="mt-2 text-sm text-neutral-500">
+                          {room.size} · {room.guests}
+                        </p>
                         <p className="mt-4 text-base text-neutral-700">{room.description}</p>
                         <div className="mt-5 flex gap-3 text-neutral-500">
-                          <span>👥</span><span>🛏️</span><span>📶</span><span>🧳</span>
+                          <span>👥</span>
+                          <span>🛏️</span>
+                          <span>📶</span>
+                          <span>🧳</span>
                         </div>
                       </div>
 
                       <div className="mt-6 flex items-end justify-between">
-                        <p className="text-sm text-neutral-500">da <span className="text-2xl font-black text-neutral-950">{room.price}</span> / notte</p>
-                        <span className="rounded-xl bg-rose-500 px-5 py-3 text-sm font-black text-white">Seleziona</span>
+                        <p className="text-sm text-neutral-500">
+                          da <span className="text-2xl font-black text-neutral-950">{room.price}</span> / notte
+                        </p>
+                        <span className="rounded-xl bg-rose-500 px-5 py-3 text-sm font-black text-white">
+                          Seleziona
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -221,7 +296,9 @@ export default function HotelPage() {
               {["Giulia R.", "Marco T.", "Elena V."].map((name, index) => (
                 <div key={name} className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-100 font-black text-rose-500">{name[0]}</div>
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-100 font-black text-rose-500">
+                      {name[0]}
+                    </div>
                     <div>
                       <p className="font-black">{name}</p>
                       {index === 0 && <p className="text-xs font-bold text-emerald-600">Loover Verified</p>}
@@ -241,10 +318,16 @@ export default function HotelPage() {
           <div className="rounded-[34px] border border-black/5 bg-white p-7 shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p className="text-4xl font-black tracking-[-0.05em]">{selectedRoom.price} <span className="text-base font-bold tracking-normal">/notte</span></p>
+                <p className="text-4xl font-black tracking-[-0.05em]">
+                  {selectedRoom.price} <span className="text-base font-bold tracking-normal">/notte</span>
+                </p>
                 <p className="mt-2 font-black">{selectedRoom.name}</p>
               </div>
-              <span className="rounded-2xl bg-emerald-100 px-4 py-3 text-center text-xs font-black text-emerald-700">Miglior prezzo<br />Loove Italy</span>
+              <span className="rounded-2xl bg-emerald-100 px-4 py-3 text-center text-xs font-black text-emerald-700">
+                Miglior prezzo
+                <br />
+                Loove Italy
+              </span>
             </div>
 
             <div className="border-t border-neutral-100 pt-5">
@@ -272,12 +355,25 @@ export default function HotelPage() {
             <div className="mt-6">
               <p className="mb-3 font-black">I tuoi dati</p>
               <label className="mb-2 block text-xs font-bold text-neutral-500">Nome</label>
-              <input className="mb-4 w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="Inserisci il tuo nome" />
+              <input
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                className="mb-4 w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                placeholder="Inserisci il tuo nome"
+              />
               <label className="mb-2 block text-xs font-bold text-neutral-500">Dettagli</label>
-              <input className="w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="Email o telefono (per la conferma)" />
+              <input
+                value={customerDetails}
+                onChange={(event) => setCustomerDetails(event.target.value)}
+                className="w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                placeholder="Email o telefono (per la conferma)"
+              />
             </div>
 
-            <button className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)]">
+            <button
+              onClick={openBooking}
+              className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
+            >
               Prenota con TripMixer AI ✨
             </button>
 
@@ -298,10 +394,18 @@ export default function HotelPage() {
           </div>
 
           <div className="mt-6 overflow-hidden rounded-[30px] bg-white shadow-sm">
-            <div className="h-44 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?q=80&w=900&auto=format&fit=crop')" }} />
+            <div
+              className="h-44 bg-cover bg-center"
+              style={{
+                backgroundImage:
+                  "url('https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?q=80&w=900&auto=format&fit=crop')",
+              }}
+            />
             <div className="p-5">
               <h3 className="font-black">Posizione</h3>
-              <p className="mt-2 text-sm leading-6 text-neutral-600">Nel cuore di Positano, a pochi passi dalla spiaggia e dalle boutique più esclusive.</p>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">
+                Nel cuore di Positano, a pochi passi dalla spiaggia e dalle boutique più esclusive.
+              </p>
               <button className="mt-4 text-sm font-black text-rose-500">Vedi sulla mappa →</button>
             </div>
           </div>
@@ -314,9 +418,199 @@ export default function HotelPage() {
             <p className="font-black">{selectedRoom.name}</p>
             <p className="text-sm text-neutral-500">10 Giu - 14 Giu · 2 Adulti</p>
           </div>
-          <button className="rounded-2xl bg-rose-500 px-5 py-3 text-sm font-black text-white">{total}</button>
+          <button onClick={openBooking} className="rounded-2xl bg-rose-500 px-5 py-3 text-sm font-black text-white">
+            {total}
+          </button>
         </div>
       </div>
+
+      {bookingOpen && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-neutral-950/62 px-4 py-8 backdrop-blur-md">
+          <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[34px] bg-white shadow-[0_40px_120px_rgba(0,0,0,0.35)]">
+            <button
+              onClick={closeBooking}
+              className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-xl font-black text-neutral-500 shadow-lg"
+            >
+              ×
+            </button>
+
+            {bookingStep === "form" && (
+              <div className="p-6 md:p-8">
+                <div className="mb-6 overflow-hidden rounded-[28px] bg-[#fff8f7]">
+                  <div
+                    className="h-56 bg-cover bg-center"
+                    style={{ backgroundImage: `url('${selectedRoom.image}')` }}
+                  />
+                  <div className="p-6">
+                    <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-rose-500">
+                      TripMixer AI booking
+                    </p>
+                    <h2 className="text-3xl font-black tracking-[-0.05em]">Conferma la tua prenotazione</h2>
+                    <p className="mt-2 text-neutral-600">
+                      TripMixer crea il viaggio, collega i servizi e prepara il futuro Travel NFT.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-neutral-400">Hotel</p>
+                    <p className="mt-1 font-black">Hotel Miramare Positano</p>
+                  </div>
+                  <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-neutral-400">Camera</p>
+                    <p className="mt-1 font-black">{selectedRoom.name}</p>
+                  </div>
+                  <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-neutral-400">Date</p>
+                    <p className="mt-1 font-black">10 - 14 Giugno 2025 · 4 notti</p>
+                  </div>
+                  <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold text-neutral-400">Totale simulato</p>
+                    <p className="mt-1 text-2xl font-black">{total}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-[28px] bg-[#fff8f7] p-5">
+                  <h3 className="mb-4 font-black">Dati cliente</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-xs font-bold text-neutral-500">Nome e cognome</label>
+                      <input
+                        value={customerName}
+                        onChange={(event) => setCustomerName(event.target.value)}
+                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        placeholder="Es. Stefano Amati"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-bold text-neutral-500">Email o telefono</label>
+                      <input
+                        value={customerDetails}
+                        onChange={(event) => setCustomerDetails(event.target.value)}
+                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        placeholder="Per ricevere la conferma"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-[28px] border border-rose-100 bg-rose-50 p-5">
+                  <h3 className="mb-3 font-black">Cosa simulerà TripMixer</h3>
+                  <div className="grid gap-3 text-sm text-neutral-700 md:grid-cols-2">
+                    <p>✨ Creazione viaggio dinamico</p>
+                    <p>🧾 Codice prenotazione Loove</p>
+                    <p>🔗 Travel NFT placeholder</p>
+                    <p>🔔 Sync futura con hotel, transfer e servizi</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={confirmBooking}
+                  className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
+                >
+                  Conferma simulazione prenotazione ✨
+                </button>
+              </div>
+            )}
+
+            {bookingStep === "loading" && (
+              <div className="grid min-h-[560px] place-items-center p-8 text-center">
+                <div>
+                  <div className="mx-auto mb-7 grid h-24 w-24 animate-pulse place-items-center rounded-full bg-rose-100 text-4xl">
+                    ✨
+                  </div>
+                  <h2 className="text-3xl font-black tracking-[-0.05em]">TripMixer sta creando il viaggio</h2>
+                  <p className="mx-auto mt-3 max-w-md leading-7 text-neutral-600">
+                    Stiamo simulando disponibilità, riepilogo servizi, codice prenotazione e Travel NFT placeholder.
+                  </p>
+                  <div className="mx-auto mt-8 h-2 max-w-sm overflow-hidden rounded-full bg-rose-100">
+                    <div className="h-full w-2/3 animate-pulse rounded-full bg-rose-500" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {bookingStep === "success" && (
+              <div className="p-6 md:p-8">
+                <div className="rounded-[30px] bg-gradient-to-br from-rose-500 to-fuchsia-500 p-8 text-white">
+                  <div className="mb-5 grid h-16 w-16 place-items-center rounded-full bg-white/18 text-3xl backdrop-blur-xl">
+                    ✓
+                  </div>
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-white/75">
+                    Booking simulation completed
+                  </p>
+                  <h2 className="text-4xl font-black tracking-[-0.06em]">TripMixer Journey Created</h2>
+                  <p className="mt-3 max-w-xl leading-7 text-white/86">
+                    Prenotazione simulata generata correttamente. In futuro questo flusso potrà collegarsi a Camino,
+                    Holid/HolHub, Iglooms e Travel NFT.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-[1fr_260px]">
+                  <div className="rounded-[28px] border border-black/5 bg-white p-6 shadow-sm">
+                    <h3 className="mb-5 font-black">Riepilogo prenotazione</h3>
+                    <div className="space-y-4 text-sm">
+                      <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+                        <span className="text-neutral-500">Codice</span>
+                        <span className="font-black">{bookingCode}</span>
+                      </div>
+                      <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+                        <span className="text-neutral-500">Cliente</span>
+                        <span className="font-black">{customerName || "Cliente demo"}</span>
+                      </div>
+                      <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+                        <span className="text-neutral-500">Hotel</span>
+                        <span className="font-black">Miramare Positano</span>
+                      </div>
+                      <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+                        <span className="text-neutral-500">Camera</span>
+                        <span className="font-black">{selectedRoom.name}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-neutral-500">Totale</span>
+                        <span className="text-xl font-black">{total}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-rose-100 bg-rose-50 p-6">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-500">Travel NFT</p>
+                    <div className="mt-5 rounded-[24px] bg-white p-5 text-center shadow-sm">
+                      <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-rose-500 to-fuchsia-500 text-4xl text-white">
+                        ◈
+                      </div>
+                      <p className="font-black">NFT Placeholder</p>
+                      <p className="mt-2 text-xs leading-5 text-neutral-500">
+                        Contenitore viaggio dinamico per servizi, aggiornamenti, check-in e upselling.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-[28px] bg-[#fff8f7] p-6">
+                  <h3 className="mb-4 font-black">Future service orchestration</h3>
+                  <div className="grid gap-3 text-sm text-neutral-700 md:grid-cols-3">
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">✈️ Delay flight sync</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🚕 Transfer alert</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🏨 Late check-in flow</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🎟️ Add excursions</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🧾 Accounting sync</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">⭐ Loover rewards</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeBooking}
+                  className="mt-6 w-full rounded-2xl bg-neutral-950 px-6 py-4 text-sm font-black text-white transition hover:-translate-y-0.5"
+                >
+                  Chiudi simulazione
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
