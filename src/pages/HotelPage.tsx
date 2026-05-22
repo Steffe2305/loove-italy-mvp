@@ -1,470 +1,319 @@
-﻿import { useEffect, useMemo, useState } from "react"
+﻿import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { loadLooveHotels, type LooveHotel } from "../lib/looveData"
-import {
-  createDemoBookingProof,
-  type LooveBookingProof,
-} from "../lib/booking"
-import { createBookingProof } from "../lib/caminoBooking"
+const rooms = [
+  {
+    name: "Deluxe Vista Mare",
+    tag: "Più scelta",
+    size: "28 m²",
+    guests: "2 ospiti",
+    description: "Vista panoramica sul Mediterraneo",
+    price: "€ 420",
+    image: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    name: "Junior Suite",
+    tag: "",
+    size: "35 m²",
+    guests: "2 ospiti",
+    description: "Ampio balcone & area relax",
+    price: "€ 560",
+    image: "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    name: "Suite Prestige",
+    tag: "",
+    size: "50 m²",
+    guests: "2 ospiti",
+    description: "Terrazza privata con jacuzzi",
+    price: "€ 890",
+    image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    name: "Miramare Suite",
+    tag: "",
+    size: "80 m²",
+    guests: "2-4 ospiti",
+    description: "Piscina privata & vista mare",
+    price: "€ 1.450",
+    image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200&auto=format&fit=crop",
+  },
+]
 
-type BookingStep = "select" | "summary" | "confirmed"
-
-type NftReadyBookingProof = LooveBookingProof & {
-  nftVoucher: {
-    voucherType: "NFT_READY_BOOKING_VOUCHER"
-    nftStatus: "READY_TO_MINT"
-    transferable: true
-    resaleEnabled: true
-    network: "Camino Network"
-    note: string
-  }
-}
+const gallery = [
+  "https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=900&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=900&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=900&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1582719508461-905c673771fd?q=80&w=900&auto=format&fit=crop",
+]
 
 export default function HotelPage() {
-  const { id } = useParams()
   const navigate = useNavigate()
+  const { id } = useParams()
+  const [selectedRoom, setSelectedRoom] = useState(rooms[0])
 
-  const [hotel, setHotel] = useState<LooveHotel | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
-  const [checkIn, setCheckIn] = useState("")
-  const [checkOut, setCheckOut] = useState("")
-  const [bookingStep, setBookingStep] = useState<BookingStep>("select")
-  const [bookingProof, setBookingProof] = useState<NftReadyBookingProof | null>(null)
-  const [publishing, setPublishing] = useState(false)
-  const [caminoResult, setCaminoResult] = useState<any>(null)
-  const [caminoError, setCaminoError] = useState("")
-
-  useEffect(() => {
-    loadLooveHotels()
-      .then((hotels) => {
-        const selectedHotel = hotels.find((item) => item.id === Number(id))
-        setHotel(selectedHotel || null)
-      })
-      .catch((err) => console.error("Error loading hotel", err))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  const selectedRoom = useMemo(() => {
-    if (!hotel) return null
-    return hotel.rooms.find((room) => room.roomId === selectedRoomId) || hotel.rooms[0]
-  }, [hotel, selectedRoomId])
-
-  const nights = useMemo(() => {
-    if (!checkIn || !checkOut) return 1
-
-    const start = new Date(checkIn)
-    const end = new Date(checkOut)
-    const diff = Math.ceil(
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-    )
-
-    return diff > 0 ? diff : 1
-  }, [checkIn, checkOut])
-
-  const total = selectedRoom ? selectedRoom.price * nights : 0
-
-  async function handleBookingClick() {
-    if (bookingStep === "select") {
-      setBookingStep("summary")
-      return
-    }
-
-    if (bookingStep === "summary" && hotel && selectedRoom) {
-      const proof = createDemoBookingProof({
-        hotel,
-        room: selectedRoom,
-        checkIn,
-        checkOut,
-        nights,
-        total,
-      })
-
-      const nftReadyProof: NftReadyBookingProof = {
-        ...proof,
-        nftVoucher: {
-          voucherType: "NFT_READY_BOOKING_VOUCHER",
-          nftStatus: "READY_TO_MINT",
-          transferable: true,
-          resaleEnabled: true,
-          network: "Camino Network",
-          note:
-            "This booking proof is ready to evolve into a transferable NFT voucher in a future Loove Italy release.",
-        },
-      }
-
-      setBookingProof(nftReadyProof)
-      setBookingStep("confirmed")
-      setPublishing(true)
-      setCaminoResult(null)
-      setCaminoError("")
-
-      try {
-        const result = await createBookingProof(nftReadyProof)
-        setCaminoResult(result)
-      } catch (error) {
-        setCaminoError(
-          error instanceof Error
-            ? error.message
-            : "Errore durante la registrazione Camino"
-        )
-      } finally {
-        setPublishing(false)
-      }
-    }
-  }
-
-  function resetBookingState() {
-    setBookingStep("select")
-    setBookingProof(null)
-    setCaminoResult(null)
-    setCaminoError("")
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <p className="text-neutral-500">Caricamento proposta Loove...</p>
-      </div>
-    )
-  }
-
-  if (!hotel || !selectedRoom) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
-        <h1 className="mb-4 text-4xl font-bold">Proposta non trovata</h1>
-        <button
-          onClick={() => navigate("/")}
-          className="rounded-full bg-pink-500 px-6 py-3 font-bold text-white"
-        >
-          Torna alla home
-        </button>
-      </div>
-    )
-  }
+  const total = useMemo(() => {
+    const numeric = Number(selectedRoom.price.replace("€", "").replace(".", "").trim())
+    return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(numeric * 4)
+  }, [selectedRoom])
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900">
-      <section
-        className="relative h-[72vh] bg-cover bg-center"
-        style={{ backgroundImage: `url(${hotel.image})` }}
-      >
-        <div className="absolute inset-0 bg-black/45" />
+    <div className="min-h-screen bg-[#fff8f7] text-[#111027]">
+      <header className="sticky top-0 z-50 border-b border-black/5 bg-white/88 px-5 py-4 backdrop-blur-2xl md:px-10">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between">
+          <button onClick={() => navigate("/")} className="flex items-center gap-3">
+            <img src="/looveitaly.png" alt="Loove Italy" className="h-12 w-auto" />
+          </button>
 
-        <header className="relative z-20 px-6 py-6">
-          <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/20 bg-white/15 px-5 py-3 text-white backdrop-blur-xl">
-            <button onClick={() => navigate("/")} className="text-2xl font-bold">
-              Loove Italy
-            </button>
+          <nav className="hidden items-center gap-10 text-sm font-bold lg:flex">
+            {["Soggiorni", "Volo", "Hotel", "Eventi", "Taxi e NCC", "Tour", "TripMixer AI"].map((item) => (
+              <span key={item} className={item === "Hotel" ? "text-rose-500" : "text-neutral-950"}>{item}</span>
+            ))}
+          </nav>
 
-            <nav className="hidden gap-8 text-sm font-medium text-white/85 md:flex">
-              <a href="#">TripMixer</a>
-              <a href="#">Soggiorni</a>
-              <a href="#">Esperienze</a>
-              <a href="#">Loovers</a>
-            </nav>
-
-            <button className="hidden rounded-full bg-white px-5 py-2 text-sm font-semibold text-neutral-900 md:block">
-              Accedi
-            </button>
+          <div className="flex items-center gap-3">
+            <button className="hidden rounded-full border border-rose-200 px-5 py-3 text-sm font-black text-rose-500 md:block">♡</button>
+            <button className="rounded-full bg-rose-500 px-5 py-3 text-sm font-black text-white shadow-[0_16px_35px_rgba(244,63,94,0.28)]">Area Loover</button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="relative z-10 mx-auto flex h-[calc(72vh-96px)] max-w-7xl items-end px-6 pb-16 text-white">
-          <div>
-            <div className="mb-4 w-fit rounded-full bg-pink-500 px-4 py-2 text-sm font-bold">
-              LOOVE VERIFIED
+      <section className="relative overflow-hidden">
+        <div
+          className="relative h-[530px] bg-cover bg-center md:h-[590px]"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1533105079780-92b9be482077?q=80&w=2400&auto=format&fit=crop')" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-black/76 via-black/34 to-black/16" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+
+          <div className="relative z-10 mx-auto flex h-full max-w-[1500px] flex-col justify-end px-5 pb-10 md:px-10">
+            <p className="mb-8 text-xs font-semibold text-white/75">Home › Hotel › Costiera Amalfitana › Positano › Hotel Miramare Positano</p>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/18 px-4 py-2 text-xs font-black text-white backdrop-blur-xl">● Loove Verified</span>
+              <span className="rounded-full bg-white/14 px-4 py-2 text-xs font-semibold text-white/82 backdrop-blur-xl">Struttura verificata</span>
             </div>
 
-            <h1 className="mb-4 max-w-4xl text-5xl font-bold leading-tight md:text-7xl">
-              {hotel.name}
+            <h1 className="max-w-3xl text-5xl font-black leading-[0.92] tracking-[-0.06em] text-white md:text-7xl">
+              Hotel Miramare<br />Positano
             </h1>
 
-            <p className="mb-3 text-lg font-semibold text-white/85">
-              {hotel.type} · {hotel.destination}, {hotel.region}
-            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-5 text-sm font-bold text-white">
+              <span className="text-rose-500">★★★★★</span>
+              <span>4,9 · 328 recensioni Loover</span>
+              <span>📍 Via Trara Genoino, 27, Positano SA, Italia</span>
+            </div>
 
-            <p className="max-w-3xl text-xl leading-8 text-white/85">
-              {hotel.description}
-            </p>
+            <div className="mt-5 flex flex-wrap gap-3 text-xs font-bold text-white/92">
+              {["Vista Mare", "Piscina Infinity", "Spa & Wellness", "Parcheggio", "Wi‑Fi Gratuito"].map((x) => (
+                <span key={x} className="rounded-full bg-black/24 px-3 py-2 backdrop-blur-xl">{x}</span>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-end justify-between gap-5">
+              <div className="flex gap-4">
+                <button className="rounded-2xl bg-rose-500 px-8 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(244,63,94,0.35)]">
+                  Book with TripMixer AI ✨
+                </button>
+                <button className="rounded-2xl border border-white/35 bg-white/10 px-8 py-4 text-sm font-black text-white backdrop-blur-xl">
+                  ♡ Salva nei preferiti
+                </button>
+              </div>
+
+              <div className="hidden gap-3 lg:flex">
+                {gallery.map((img) => (
+                  <div key={img} className="h-24 w-24 rounded-2xl border-2 border-white bg-cover bg-center shadow-xl" style={{ backgroundImage: `url('${img}')` }} />
+                ))}
+                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-center text-sm font-black text-neutral-950 shadow-xl">+24<br />Foto</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-16 px-6 py-20 lg:grid-cols-[1fr_420px]">
-        <main>
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-pink-500">
-            Proposta Loove
-          </p>
-
-          <h2 className="mb-6 text-4xl font-bold">
-            Soggiorno selezionato con TripMixer
-          </h2>
-
-          <p className="mb-10 text-lg leading-8 text-neutral-600">
-            Questa proposta può essere combinata con esperienze, transfer e
-            servizi locali per creare un viaggio completo in un unico flusso.
-          </p>
-
-          <h3 className="mb-6 text-2xl font-bold">Camere disponibili</h3>
-
-          <div className="mb-14 space-y-5">
-            {hotel.rooms.map((room) => {
-              const isSelected = selectedRoom.roomId === room.roomId
-
-              return (
-                <div
-                  key={room.roomId}
-                  className={`rounded-[28px] border bg-white p-6 shadow-sm transition ${
-                    isSelected ? "border-pink-500 shadow-lg" : "border-neutral-200"
-                  }`}
-                >
-                  <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-                    <div>
-                      <h4 className="mb-2 text-2xl font-bold">
-                        {room.roomName}
-                      </h4>
-
-                      <p className="mb-3 leading-7 text-neutral-600">
-                        {room.description}
-                      </p>
-
-                      <p className="text-sm font-semibold text-neutral-500">
-                        Max {room.maxGuests} ospiti ·{" "}
-                        {room.available ? "Disponibile" : "Non disponibile"}
-                      </p>
-                    </div>
-
-                    <div className="text-left md:text-right">
-                      <p className="text-3xl font-bold">
-                        €{room.price}
-                        <span className="text-sm font-medium text-neutral-500">
-                          {" "}
-                          / notte
-                        </span>
-                      </p>
-
-                      <button
-                        onClick={() => {
-                          setSelectedRoomId(room.roomId)
-                          resetBookingState()
-                        }}
-                        className={`mt-4 rounded-full px-5 py-3 text-sm font-bold transition ${
-                          isSelected
-                            ? "bg-neutral-900 text-white"
-                            : "bg-pink-500 text-white hover:bg-pink-600"
-                        }`}
-                      >
-                        {isSelected ? "Camera selezionata" : "Seleziona camera"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <h3 className="mb-6 text-2xl font-bold">
-            Esperienze abbinate da TripMixer
-          </h3>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            {hotel.experiences.map((experience) => (
-              <div
-                key={experience.id}
-                className="rounded-[28px] border border-neutral-200 bg-neutral-50 p-6"
-              >
-                <h4 className="mb-2 text-xl font-bold">{experience.title}</h4>
-                <p className="mb-5 leading-7 text-neutral-600">
-                  {experience.description}
-                </p>
-                <p className="font-bold text-pink-500">€{experience.price}</p>
+      <main className="mx-auto grid max-w-[1500px] gap-8 px-5 py-9 md:px-10 lg:grid-cols-[1fr_420px]">
+        <div className="min-w-0">
+          <section className="mb-8">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-black tracking-[-0.04em]">Scegli la tua camera</h2>
+                <p className="mt-1 text-sm text-neutral-500">11 tipologie disponibili</p>
               </div>
-            ))}
-          </div>
-        </main>
-
-        <aside className="h-fit rounded-[32px] border border-neutral-200 bg-white p-8 shadow-xl">
-          {bookingStep !== "confirmed" ? (
-            <>
-              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-pink-500">
-                Prenotazione
-              </p>
-
-              <h3 className="mb-3 text-3xl font-bold">{selectedRoom.roomName}</h3>
-
-              <p className="mb-8 text-neutral-500">
-                A partire da{" "}
-                <span className="text-3xl font-bold text-neutral-900">
-                  €{selectedRoom.price}
-                </span>{" "}
-                / notte
-              </p>
-
-              <div className="space-y-4">
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => {
-                    setCheckIn(e.target.value)
-                    resetBookingState()
-                  }}
-                  className="w-full rounded-2xl border border-neutral-200 px-4 py-4 outline-none focus:border-pink-500"
-                />
-
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => {
-                    setCheckOut(e.target.value)
-                    resetBookingState()
-                  }}
-                  className="w-full rounded-2xl border border-neutral-200 px-4 py-4 outline-none focus:border-pink-500"
-                />
-
-                <div className="rounded-2xl bg-neutral-50 p-5">
-                  <div className="mb-3 flex justify-between text-sm text-neutral-600">
-                    <span>Notti</span>
-                    <span>{nights}</span>
-                  </div>
-
-                  <div className="mb-3 flex justify-between text-sm text-neutral-600">
-                    <span>Camera</span>
-                    <span>€{selectedRoom.price} / notte</span>
-                  </div>
-
-                  <div className="flex justify-between border-t border-neutral-200 pt-4 text-xl font-bold">
-                    <span>Totale demo</span>
-                    <span>€{total}</span>
-                  </div>
-                </div>
-
-                {bookingStep === "summary" && (
-                  <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5 text-sm leading-6 text-neutral-700">
-                    <strong>Riepilogo pronto.</strong>
-                    <br />
-                    Il prossimo click confermerà la prenotazione demo, pubblicherà
-                    il booking proof su IPFS, lo registrerà su Camino e lo renderà
-                    NFT-ready.
-                  </div>
-                )}
-
-                <button
-                  onClick={handleBookingClick}
-                  className="w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-600 px-6 py-4 font-bold text-white"
-                >
-                  {bookingStep === "summary"
-                    ? "CONFERMA PRENOTAZIONE"
-                    : "PRENOTA ORA"}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-pink-500 text-3xl text-white">
-                ✓
-              </div>
-
-              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-pink-500">
-                Booking Proof Demo
-              </p>
-
-              <h3 className="mb-4 text-3xl font-bold">
-                Prenotazione confermata
-              </h3>
-
-              {publishing && (
-                <div className="mb-6 rounded-2xl border border-pink-200 bg-pink-50 p-5 text-sm font-semibold text-pink-700">
-                  Pubblicazione IPFS, registrazione Camino e preparazione NFT-ready in corso...
-                </div>
-              )}
-
-              {caminoResult && (
-                <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 text-left text-sm leading-7 text-green-800">
-                  <p className="font-bold">
-                    Booking proof registrata su Camino
-                  </p>
-
-                  <p className="break-all">
-                    <strong>IPFS CID:</strong> {caminoResult.ipfs?.cid}
-                  </p>
-
-                  <p className="break-all">
-                    <strong>IPFS URI:</strong> {caminoResult.ipfsUri}
-                  </p>
-
-                  <p className="break-all">
-                    <strong>Gateway:</strong> {caminoResult.ipfs?.gatewayUrl}
-                  </p>
-
-                  <p className="break-all">
-                    <strong>Transaction Hash:</strong> {caminoResult.txHash}
-                  </p>
-
-                  <p className="break-all">
-                    <strong>Camino Content ID:</strong> {caminoResult.contentId}
-                  </p>
-                </div>
-              )}
-
-              {bookingProof?.nftVoucher && (
-                <div className="mb-6 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-5 text-left text-sm leading-7 text-fuchsia-800">
-                  <p className="font-bold">Voucher NFT-ready</p>
-                  <p>
-                    <strong>Status:</strong> {bookingProof.nftVoucher.nftStatus}
-                  </p>
-                  <p>
-                    <strong>Transferibile:</strong>{" "}
-                    {bookingProof.nftVoucher.transferable ? "Sì" : "No"}
-                  </p>
-                  <p>
-                    <strong>Rivendita abilitabile:</strong>{" "}
-                    {bookingProof.nftVoucher.resaleEnabled ? "Sì" : "No"}
-                  </p>
-                  <p>
-                    <strong>Network:</strong> {bookingProof.nftVoucher.network}
-                  </p>
-                </div>
-              )}
-
-              {caminoError && (
-                <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-left text-sm leading-7 text-red-700">
-                  <strong>Registrazione Camino fallita.</strong>
-                  <br />
-                  {caminoError}
-                </div>
-              )}
-
-              <div className="mb-6 rounded-2xl bg-neutral-50 p-5 text-left text-sm leading-7 text-neutral-700">
-                <p>
-                  <strong>Booking ID:</strong>{" "}
-                  {bookingProof?.bookingId || "LOOVE-DEMO"}
-                </p>
-                <p>
-                  <strong>Check-in:</strong> {bookingProof?.stay.checkIn}
-                </p>
-                <p>
-                  <strong>Check-out:</strong> {bookingProof?.stay.checkOut}
-                </p>
-                <p>
-                  <strong>Notti:</strong> {bookingProof?.stay.nights}
-                </p>
-                <p>
-                  <strong>Totale:</strong> €{bookingProof?.total.amount}
-                </p>
-              </div>
-
-              <button
-                onClick={() => navigate("/")}
-                className="mt-6 rounded-full border border-pink-500 px-6 py-3 font-bold text-pink-500 transition hover:bg-pink-500 hover:text-white"
-              >
-                Torna alla home
-              </button>
+              <button className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black shadow-sm">☷ Filtra camere</button>
             </div>
-          )}
+
+            <div className="space-y-5">
+              {rooms.map((room) => {
+                const active = selectedRoom.name === room.name
+                return (
+                  <button
+                    key={room.name}
+                    onClick={() => setSelectedRoom(room)}
+                    className={`group grid w-full overflow-hidden rounded-[28px] border bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl md:grid-cols-[340px_1fr] ${
+                      active ? "border-rose-400 ring-4 ring-rose-100" : "border-black/5"
+                    }`}
+                  >
+                    <div className="relative h-64 bg-cover bg-center md:h-full" style={{ backgroundImage: `url('${room.image}')` }}>
+                      {room.tag && <span className="absolute left-4 top-4 rounded-full bg-rose-500 px-4 py-2 text-xs font-black text-white">{room.tag}</span>}
+                    </div>
+
+                    <div className="flex min-h-[220px] flex-col justify-between p-6">
+                      <div>
+                        <div className="flex items-start justify-between gap-4">
+                          <h3 className="text-xl font-black">{room.name}</h3>
+                          <span className="text-2xl text-neutral-400">♡</span>
+                        </div>
+                        <p className="mt-2 text-sm text-neutral-500">{room.size} · {room.guests}</p>
+                        <p className="mt-4 text-base text-neutral-700">{room.description}</p>
+                        <div className="mt-5 flex gap-3 text-neutral-500">
+                          <span>👥</span><span>🛏️</span><span>📶</span><span>🧳</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex items-end justify-between">
+                        <p className="text-sm text-neutral-500">da <span className="text-2xl font-black text-neutral-950">{room.price}</span> / notte</p>
+                        <span className="rounded-xl bg-rose-500 px-5 py-3 text-sm font-black text-white">Seleziona</span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <button className="mt-5 w-full rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm font-black text-rose-500">
+              Vedi tutte le 11 camere ↓
+            </button>
+          </section>
+
+          <section className="mb-8 rounded-[32px] bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-black tracking-[-0.04em]">Un’esperienza indimenticabile</h2>
+            <p className="mt-2 max-w-3xl leading-7 text-neutral-600">
+              Affacciato sulla splendida Costiera Amalfitana, l’Hotel Miramare Positano unisce eleganza mediterranea,
+              comfort esclusivo e servizi impeccabili.
+            </p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-4">
+              {[
+                ["🌸", "Servizio 5 stelle", "Staff sempre disponibile"],
+                ["🍽️", "Cucina gourmet", "Ristorante vista mare"],
+                ["🧖", "Spa & Wellness", "Massaggi e trattamenti"],
+                ["🌿", "Sostenibilità", "Struttura eco-friendly"],
+              ].map(([icon, title, text]) => (
+                <div key={title} className="rounded-2xl border border-black/5 bg-[#fff8f7] p-4">
+                  <div className="mb-2 text-2xl">{icon}</div>
+                  <h3 className="font-black">{title}</h3>
+                  <p className="text-xs text-neutral-500">{text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[32px] bg-white p-6 shadow-sm">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-black tracking-[-0.04em]">Cosa dicono i Loover</h2>
+              <p className="font-black text-rose-500">★ 4,9/5</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {["Giulia R.", "Marco T.", "Elena V."].map((name, index) => (
+                <div key={name} className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-rose-100 font-black text-rose-500">{name[0]}</div>
+                    <div>
+                      <p className="font-black">{name}</p>
+                      {index === 0 && <p className="text-xs font-bold text-emerald-600">Loover Verified</p>}
+                    </div>
+                  </div>
+                  <p className="mb-3 text-rose-500">★★★★★</p>
+                  <p className="text-sm leading-6 text-neutral-600">
+                    Struttura da sogno, vista mozzafiato e servizio impeccabile. Un’esperienza che rimarrà nel cuore!
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="lg:sticky lg:top-28 lg:self-start">
+          <div className="rounded-[34px] border border-black/5 bg-white p-7 shadow-[0_24px_70px_rgba(15,23,42,0.10)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-4xl font-black tracking-[-0.05em]">{selectedRoom.price} <span className="text-base font-bold tracking-normal">/notte</span></p>
+                <p className="mt-2 font-black">{selectedRoom.name}</p>
+              </div>
+              <span className="rounded-2xl bg-emerald-100 px-4 py-3 text-center text-xs font-black text-emerald-700">Miglior prezzo<br />Loove Italy</span>
+            </div>
+
+            <div className="border-t border-neutral-100 pt-5">
+              <p className="mb-3 font-black">Date</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500">Check-in</p>
+                  <p className="font-black">10 Giu 2025</p>
+                  <p className="text-sm text-neutral-500">Martedì</p>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500">Check-out</p>
+                  <p className="font-black">14 Giu 2025</p>
+                  <p className="text-sm text-neutral-500">Sabato</p>
+                </div>
+              </div>
+              <p className="mt-3 text-center text-sm font-black">4 notti</p>
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-3 font-black">Ospiti</p>
+              <div className="rounded-2xl border border-neutral-200 p-4 font-black">2 Adulti ˅</div>
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-3 font-black">I tuoi dati</p>
+              <label className="mb-2 block text-xs font-bold text-neutral-500">Nome</label>
+              <input className="mb-4 w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="Inserisci il tuo nome" />
+              <label className="mb-2 block text-xs font-bold text-neutral-500">Dettagli</label>
+              <input className="w-full rounded-2xl border border-neutral-200 px-4 py-3 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="Email o telefono (per la conferma)" />
+            </div>
+
+            <button className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)]">
+              Prenota con TripMixer AI ✨
+            </button>
+
+            <div className="mt-5 space-y-2 text-sm text-neutral-600">
+              <p>✅ Cancellazione gratuita fino a 48h prima</p>
+              <p>✅ Pagamento sicuro</p>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-[30px] border border-rose-100 bg-rose-50 p-6">
+            <h3 className="mb-5 font-black">Perché prenotare con Loove Italy</h3>
+            <div className="space-y-4 text-sm text-neutral-700">
+              <p>🏷️ Miglior prezzo garantito</p>
+              <p>🎧 Assistenza Loover 24/7</p>
+              <p>💳 Paga in 3 rate senza interessi</p>
+              <p>🛡️ Loove Verified – Struttura controllata</p>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-[30px] bg-white shadow-sm">
+            <div className="h-44 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?q=80&w=900&auto=format&fit=crop')" }} />
+            <div className="p-5">
+              <h3 className="font-black">Posizione</h3>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">Nel cuore di Positano, a pochi passi dalla spiaggia e dalle boutique più esclusive.</p>
+              <button className="mt-4 text-sm font-black text-rose-500">Vedi sulla mappa →</button>
+            </div>
+          </div>
         </aside>
-      </section>
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-black/5 bg-white/92 p-4 shadow-[0_-20px_60px_rgba(15,23,42,0.12)] backdrop-blur-2xl lg:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-black">{selectedRoom.name}</p>
+            <p className="text-sm text-neutral-500">10 Giu - 14 Giu · 2 Adulti</p>
+          </div>
+          <button className="rounded-2xl bg-rose-500 px-5 py-3 text-sm font-black text-white">{total}</button>
+        </div>
+      </div>
     </div>
   )
 }
