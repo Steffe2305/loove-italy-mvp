@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 const rooms = [
   {
@@ -49,12 +49,15 @@ const gallery = [
 
 export default function HotelPage() {
   const navigate = useNavigate()
-  const { id } = useParams()
   const [selectedRoom, setSelectedRoom] = useState(rooms[0])
 
   const total = useMemo(() => {
     const numeric = Number(selectedRoom.price.replace("€", "").replace(".", "").trim())
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(numeric * 4)
+    return new Intl.NumberFormat("it-IT", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 0
+    }).format(numeric * 4)
   }, [selectedRoom])
 
   return (
