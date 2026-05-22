@@ -72,9 +72,7 @@ function HomePage() {
     )
   })
 
-  const featuredHotel = useMemo(() => hotels[0], [hotels])
-
-  function handleSearch() {
+    function handleSearch() {
     setSubmittedDestination(destination)
     setHasSearched(true)
   }
@@ -100,17 +98,8 @@ function HomePage() {
               <a href="#trust" className="transition hover:text-white">Operatori verificati</a>
             </nav>
 
-            <div className="hidden items-center gap-3 md:flex">
-              <button className="rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-black text-white backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/20">
-                ♡ Preferiti
-              </button>
-              <button className="rounded-full bg-white px-5 py-2.5 text-sm font-black text-neutral-950 shadow-lg transition hover:-translate-y-0.5">
-                Area Loover
-              </button>
-            </div>
-
-            <button className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-black text-white backdrop-blur-xl md:hidden">
-              Menu
+            <button className="hidden rounded-full bg-white px-5 py-2.5 text-sm font-black text-neutral-950 shadow-lg transition hover:-translate-y-0.5 md:block">
+              Accedi
             </button>
           </div>
         </header>
@@ -221,19 +210,17 @@ function HomePage() {
         ))}
       </section>
 
-      {(hasSearched || featuredHotel) && (
+      {hasSearched && (
         <section id="soggiorni" className="mx-auto max-w-[1480px] px-5 pb-24 md:px-8">
           <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
               <p className="mb-3 text-sm font-black uppercase tracking-[0.32em] text-rose-500">
-                {hasSearched ? `Risultati ${selectedService}` : "Soggiorni selezionati"}
+                Risultati {selectedService}
               </p>
               <h2 className="max-w-4xl text-4xl font-black leading-[0.98] tracking-[-0.06em] text-neutral-950 md:text-6xl">
-                {hasSearched
-                  ? results.length > 0
-                    ? `Proposte disponibili per “${submittedDestination || "Italia"}”`
-                    : "Nessuna proposta trovata"
-                  : "Hotel e soggiorni verificati per iniziare la demo Loove."}
+                {results.length > 0
+                  ? `Proposte disponibili per “${submittedDestination || "Italia"}”`
+                  : "Nessuna proposta trovata"}
               </h2>
             </div>
             <p className="max-w-md text-base leading-7 text-neutral-500">
@@ -241,9 +228,9 @@ function HomePage() {
             </p>
           </div>
 
-          {(hasSearched ? results : hotels).length > 0 ? (
+          {results.length > 0 ? (
             <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
-              {(hasSearched ? results : hotels).map((hotel) => (
+              {results.map((hotel) => (
                 <article key={hotel.id} className="group overflow-hidden rounded-[34px] border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-2xl">
                   <div className="relative h-80 overflow-hidden">
                     <img src={hotel.image} alt={hotel.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -290,37 +277,6 @@ function HomePage() {
           )}
         </section>
       )}
-
-      <section className="bg-white px-5 py-24 md:px-8">
-        <div className="mx-auto grid max-w-[1480px] overflow-hidden rounded-[42px] border border-rose-100 bg-gradient-to-br from-white via-rose-50 to-fuchsia-50 shadow-[0_30px_90px_-55px_rgba(190,24,93,0.55)] lg:grid-cols-[1fr_0.9fr]">
-          <div className="p-8 md:p-12 lg:p-16">
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.32em] text-rose-500">Area Loover</p>
-            <h2 className="max-w-3xl text-4xl font-black leading-[0.98] tracking-[-0.06em] text-neutral-950 md:text-6xl">Il profilo personale dove salvare, replicare e raccontare viaggi.</h2>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
-              Primo teaser dell’area utente: preferiti, viaggi creati con TripMixer AI, prenotazioni e future recensioni verificate collegate alla proof Camino.
-            </p>
-
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {["Wishlist smart", "Trip salvati", "Review verified"].map((item) => (
-                <div key={item} className="rounded-3xl border border-white bg-white/75 p-5 shadow-sm backdrop-blur-xl">
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-white">♡</div>
-                  <h3 className="font-black text-neutral-950">{item}</h3>
-                  <p className="mt-2 text-sm leading-6 text-neutral-500">Modulo pronto per evolvere nel login reale Loove.</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative min-h-[420px] bg-cover bg-center" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1499678329028-101435549a4e?q=80&w=1400&auto=format&fit=crop')` }}>
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/70 via-neutral-950/10 to-transparent" />
-            <div className="absolute bottom-8 left-8 right-8 rounded-[30px] border border-white/20 bg-white/15 p-6 text-white backdrop-blur-2xl">
-              <p className="text-sm font-bold text-white/70">Prossimo step</p>
-              <h3 className="mt-1 text-2xl font-black tracking-[-0.04em]">Login Loover + dashboard personale</h3>
-              <p className="mt-3 text-sm leading-6 text-white/75">Da qui potremo collegare profilo, preferiti, TripMixer e reward.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section id="tripmixer" className="bg-neutral-950 px-5 py-24 text-white md:px-8">
         <div className="mx-auto grid max-w-[1480px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
