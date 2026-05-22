@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Routes, Route, useNavigate } from "react-router-dom"
 
 import { loadLooveHotels, type LooveHotel } from "./lib/looveData"
