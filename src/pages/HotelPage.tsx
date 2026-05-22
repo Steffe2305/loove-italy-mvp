@@ -47,7 +47,31 @@ const gallery = [
   "https://images.unsplash.com/photo-1582719508461-905c673771fd?q=80&w=900&auto=format&fit=crop",
 ]
 
-type BookingStep = "form" | "loading" | "success"
+type BookingStep = "form" | "wallet" | "success"
+
+function parseEuroPrice(value: string) {
+  return Number(value.replace("€", "").replace(".", "").trim())
+}
+
+function getNights(checkIn: string, checkOut: string) {
+  const start = new Date(checkIn)
+  const end = new Date(checkOut)
+  const diff = end.getTime() - start.getTime()
+  const nights = Math.ceil(diff / (1000 * 60 * 60 * 24))
+  return nights > 0 ? nights : 1
+}
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function shortWallet(address: string) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
 
 export default function HotelPage() {
   const navigate = useNavigate()
@@ -56,35 +80,57 @@ export default function HotelPage() {
   const [bookingStep, setBookingStep] = useState<BookingStep>("form")
   const [customerName, setCustomerName] = useState("")
   const [customerDetails, setCustomerDetails] = useState("")
+  const [checkIn, setCheckIn] = useState("2025-06-10")
+  const [checkOut, setCheckOut] = useState("2025-06-14")
+  const [walletAddress, setWalletAddress] = useState("")
+  const [walletError, setWalletError] = useState("")
 
-  const total = useMemo(() => {
-    const numeric = Number(selectedRoom.price.replace("€", "").replace(".", "").trim())
-    return new Intl.NumberFormat("it-IT", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(numeric * 4)
-  }, [selectedRoom])
+  const nights = useMemo(() => getNights(checkIn, checkOut), [checkIn, checkOut])
+  const nightlyPrice = useMemo(() => parseEuroPrice(selectedRoom.price), [selectedRoom])
+  const totalNumber = nightlyPrice * nights
+  const total = formatEuro(totalNumber)
 
-  const bookingCode = useMemo(() => {
-    return `LOOVE-TM-${Math.floor(1000 + Math.random() * 9000)}`
+  const publicBookingCode = useMemo(() => `LOOVE-${Math.floor(10000 + Math.random() * 90000)}`, [bookingStep])
+  const technicalBookingId = useMemo(() => {
+    const seed = Math.floor(100000000 + Math.random() * 900000000)
+    return `HLB-${seed}`
   }, [bookingStep])
 
   function openBooking() {
     setBookingOpen(true)
     setBookingStep("form")
+    setWalletError("")
   }
 
   function closeBooking() {
     setBookingOpen(false)
     setBookingStep("form")
+    setWalletError("")
   }
 
-  function confirmBooking() {
-    setBookingStep("loading")
-    window.setTimeout(() => {
+  async function connectWalletAndConfirm() {
+    setWalletError("")
+    const ethereum = (window as any).ethereum
+
+    if (!ethereum) {
+      setWalletError("MetaMask non rilevato. Installa o attiva MetaMask per completare la prenotazione.")
+      return
+    }
+
+    try {
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" })
+      const firstAccount = accounts?.[0]
+
+      if (!firstAccount) {
+        setWalletError("Connessione wallet non completata.")
+        return
+      }
+
+      setWalletAddress(firstAccount)
       setBookingStep("success")
-    }, 1700)
+    } catch {
+      setWalletError("Connessione MetaMask annullata o non riuscita.")
+    }
   }
 
   return (
@@ -165,7 +211,7 @@ export default function HotelPage() {
                   onClick={openBooking}
                   className="rounded-2xl bg-rose-500 px-8 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(244,63,94,0.35)] transition hover:-translate-y-0.5 hover:bg-rose-600"
                 >
-                  Book with TripMixer AI ✨
+                  Prenota
                 </button>
                 <button className="rounded-2xl border border-white/35 bg-white/10 px-8 py-4 text-sm font-black text-white backdrop-blur-xl">
                   ♡ Salva nei preferiti
@@ -333,18 +379,26 @@ export default function HotelPage() {
             <div className="border-t border-neutral-100 pt-5">
               <p className="mb-3 font-black">Date</p>
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-neutral-200 p-4">
+                <label className="rounded-2xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500">Check-in</p>
-                  <p className="font-black">10 Giu 2025</p>
-                  <p className="text-sm text-neutral-500">Martedì</p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 p-4">
+                  <input
+                    type="date"
+                    value={checkIn}
+                    onChange={(event) => setCheckIn(event.target.value)}
+                    className="mt-1 w-full bg-transparent text-sm font-black outline-none"
+                  />
+                </label>
+                <label className="rounded-2xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500">Check-out</p>
-                  <p className="font-black">14 Giu 2025</p>
-                  <p className="text-sm text-neutral-500">Sabato</p>
-                </div>
+                  <input
+                    type="date"
+                    value={checkOut}
+                    onChange={(event) => setCheckOut(event.target.value)}
+                    className="mt-1 w-full bg-transparent text-sm font-black outline-none"
+                  />
+                </label>
               </div>
-              <p className="mt-3 text-center text-sm font-black">4 notti</p>
+              <p className="mt-3 text-center text-sm font-black">{nights} notti · Totale {total}</p>
             </div>
 
             <div className="mt-6">
@@ -374,7 +428,7 @@ export default function HotelPage() {
               onClick={openBooking}
               className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
             >
-              Prenota con TripMixer AI ✨
+              Prenota
             </button>
 
             <div className="mt-5 space-y-2 text-sm text-neutral-600">
@@ -416,7 +470,9 @@ export default function HotelPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-black">{selectedRoom.name}</p>
-            <p className="text-sm text-neutral-500">10 Giu - 14 Giu · 2 Adulti</p>
+            <p className="text-sm text-neutral-500">
+              {checkIn} - {checkOut} · 2 Adulti
+            </p>
           </div>
           <button onClick={openBooking} className="rounded-2xl bg-rose-500 px-5 py-3 text-sm font-black text-white">
             {total}
@@ -443,11 +499,11 @@ export default function HotelPage() {
                   />
                   <div className="p-6">
                     <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-rose-500">
-                      TripMixer AI booking
+                      Loove Italy booking
                     </p>
                     <h2 className="text-3xl font-black tracking-[-0.05em]">Conferma la tua prenotazione</h2>
                     <p className="mt-2 text-neutral-600">
-                      TripMixer crea il viaggio, collega i servizi e prepara il futuro Travel NFT.
+                      Verifica camera, date e dati cliente prima di procedere con la conferma.
                     </p>
                   </div>
                 </div>
@@ -463,10 +519,12 @@ export default function HotelPage() {
                   </div>
                   <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
                     <p className="text-xs font-bold text-neutral-400">Date</p>
-                    <p className="mt-1 font-black">10 - 14 Giugno 2025 · 4 notti</p>
+                    <p className="mt-1 font-black">
+                      {checkIn} - {checkOut} · {nights} notti
+                    </p>
                   </div>
                   <div className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm">
-                    <p className="text-xs font-bold text-neutral-400">Totale simulato</p>
+                    <p className="text-xs font-bold text-neutral-400">Totale</p>
                     <p className="mt-1 text-2xl font-black">{total}</p>
                   </div>
                 </div>
@@ -496,37 +554,53 @@ export default function HotelPage() {
                 </div>
 
                 <div className="mt-6 rounded-[28px] border border-rose-100 bg-rose-50 p-5">
-                  <h3 className="mb-3 font-black">Cosa simulerà TripMixer</h3>
-                  <div className="grid gap-3 text-sm text-neutral-700 md:grid-cols-2">
-                    <p>✨ Creazione viaggio dinamico</p>
-                    <p>🧾 Codice prenotazione Loove</p>
-                    <p>🔗 Travel NFT placeholder</p>
-                    <p>🔔 Sync futura con hotel, transfer e servizi</p>
-                  </div>
+                  <h3 className="mb-3 font-black">Conferma tramite wallet</h3>
+                  <p className="text-sm leading-6 text-neutral-700">
+                    In questa fase il wallet serve a creare un ID tecnico verificabile della prenotazione. L’ID rimane
+                    nascosto lato cliente e sarà visibile solo negli ambienti professionali autorizzati.
+                  </p>
                 </div>
 
                 <button
-                  onClick={confirmBooking}
+                  onClick={() => setBookingStep("wallet")}
                   className="mt-6 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
                 >
-                  Conferma simulazione prenotazione ✨
+                  Procedi alla conferma
                 </button>
               </div>
             )}
 
-            {bookingStep === "loading" && (
+            {bookingStep === "wallet" && (
               <div className="grid min-h-[560px] place-items-center p-8 text-center">
-                <div>
-                  <div className="mx-auto mb-7 grid h-24 w-24 animate-pulse place-items-center rounded-full bg-rose-100 text-4xl">
-                    ✨
+                <div className="w-full max-w-md">
+                  <div className="mx-auto mb-7 grid h-24 w-24 place-items-center rounded-full bg-rose-100 text-4xl">
+                    🦊
                   </div>
-                  <h2 className="text-3xl font-black tracking-[-0.05em]">TripMixer sta creando il viaggio</h2>
-                  <p className="mx-auto mt-3 max-w-md leading-7 text-neutral-600">
-                    Stiamo simulando disponibilità, riepilogo servizi, codice prenotazione e Travel NFT placeholder.
+                  <h2 className="text-3xl font-black tracking-[-0.05em]">Connetti MetaMask</h2>
+                  <p className="mx-auto mt-3 leading-7 text-neutral-600">
+                    Conferma il wallet per creare il codice tecnico della prenotazione. Al cliente verrà mostrato solo
+                    il codice Loove.
                   </p>
-                  <div className="mx-auto mt-8 h-2 max-w-sm overflow-hidden rounded-full bg-rose-100">
-                    <div className="h-full w-2/3 animate-pulse rounded-full bg-rose-500" />
-                  </div>
+
+                  {walletError && (
+                    <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600">
+                      {walletError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={connectWalletAndConfirm}
+                    className="mt-7 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
+                  >
+                    Connetti MetaMask e conferma
+                  </button>
+
+                  <button
+                    onClick={() => setBookingStep("form")}
+                    className="mt-3 w-full rounded-2xl border border-neutral-200 bg-white px-6 py-4 text-sm font-black text-neutral-700"
+                  >
+                    Torna al riepilogo
+                  </button>
                 </div>
               </div>
             )}
@@ -538,12 +612,12 @@ export default function HotelPage() {
                     ✓
                   </div>
                   <p className="mb-2 text-xs font-black uppercase tracking-[0.25em] text-white/75">
-                    Booking simulation completed
+                    Booking confirmed
                   </p>
-                  <h2 className="text-4xl font-black tracking-[-0.06em]">TripMixer Journey Created</h2>
+                  <h2 className="text-4xl font-black tracking-[-0.06em]">Prenotazione confermata</h2>
                   <p className="mt-3 max-w-xl leading-7 text-white/86">
-                    Prenotazione simulata generata correttamente. In futuro questo flusso potrà collegarsi a Camino,
-                    Holid/HolHub, Iglooms e Travel NFT.
+                    La prenotazione è stata creata. Il codice tecnico rimane nascosto lato cliente e potrà essere usato
+                    in futuro per verifica HolHub/Holid.
                   </p>
                 </div>
 
@@ -552,8 +626,8 @@ export default function HotelPage() {
                     <h3 className="mb-5 font-black">Riepilogo prenotazione</h3>
                     <div className="space-y-4 text-sm">
                       <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
-                        <span className="text-neutral-500">Codice</span>
-                        <span className="font-black">{bookingCode}</span>
+                        <span className="text-neutral-500">Codice cliente</span>
+                        <span className="font-black">{publicBookingCode}</span>
                       </div>
                       <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
                         <span className="text-neutral-500">Cliente</span>
@@ -567,6 +641,10 @@ export default function HotelPage() {
                         <span className="text-neutral-500">Camera</span>
                         <span className="font-black">{selectedRoom.name}</span>
                       </div>
+                      <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+                        <span className="text-neutral-500">Wallet</span>
+                        <span className="font-black">{shortWallet(walletAddress)}</span>
+                      </div>
                       <div className="flex justify-between gap-4">
                         <span className="text-neutral-500">Totale</span>
                         <span className="text-xl font-black">{total}</span>
@@ -575,27 +653,27 @@ export default function HotelPage() {
                   </div>
 
                   <div className="rounded-[28px] border border-rose-100 bg-rose-50 p-6">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-500">Travel NFT</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-500">ID tecnico</p>
                     <div className="mt-5 rounded-[24px] bg-white p-5 text-center shadow-sm">
                       <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-rose-500 to-fuchsia-500 text-4xl text-white">
                         ◈
                       </div>
-                      <p className="font-black">NFT Placeholder</p>
+                      <p className="font-black">{technicalBookingId}</p>
                       <p className="mt-2 text-xs leading-5 text-neutral-500">
-                        Contenitore viaggio dinamico per servizi, aggiornamenti, check-in e upselling.
+                        ID nascosto lato cliente, leggibile solo da ambienti autorizzati HolHub/Holid.
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6 rounded-[28px] bg-[#fff8f7] p-6">
-                  <h3 className="mb-4 font-black">Future service orchestration</h3>
+                  <h3 className="mb-4 font-black">Futura integrazione professionale</h3>
                   <div className="grid gap-3 text-sm text-neutral-700 md:grid-cols-3">
-                    <p className="rounded-2xl bg-white p-4 shadow-sm">✈️ Delay flight sync</p>
-                    <p className="rounded-2xl bg-white p-4 shadow-sm">🚕 Transfer alert</p>
-                    <p className="rounded-2xl bg-white p-4 shadow-sm">🏨 Late check-in flow</p>
-                    <p className="rounded-2xl bg-white p-4 shadow-sm">🎟️ Add excursions</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🏨 Verifica hotel</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🔐 ID prenotazione nascosto</p>
                     <p className="rounded-2xl bg-white p-4 shadow-sm">🧾 Accounting sync</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🌐 HolHub provider view</p>
+                    <p className="rounded-2xl bg-white p-4 shadow-sm">🆔 Holid registry</p>
                     <p className="rounded-2xl bg-white p-4 shadow-sm">⭐ Loover rewards</p>
                   </div>
                 </div>
@@ -604,7 +682,7 @@ export default function HotelPage() {
                   onClick={closeBooking}
                   className="mt-6 w-full rounded-2xl bg-neutral-950 px-6 py-4 text-sm font-black text-white transition hover:-translate-y-0.5"
                 >
-                  Chiudi simulazione
+                  Chiudi
                 </button>
               </div>
             )}
