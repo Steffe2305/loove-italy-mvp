@@ -109,12 +109,6 @@ export default function HotelPage() {
     setWalletError("")
   }
 
-  function stringToHex(value: string) {
-    return `0x${Array.from(new TextEncoder().encode(value))
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("")}`
-  }
-
   async function connectWalletAndConfirm() {
     setWalletError("")
     setTransactionHash("")
@@ -136,7 +130,7 @@ export default function HotelPage() {
 
       setWalletAddress(firstAccount)
 
-      const bookingPayload = JSON.stringify({
+      const bookingPayload = {
         type: "LOOVE_BOOKING_PROOF",
         publicCode: publicBookingCode,
         technicalId: technicalBookingId,
@@ -148,25 +142,20 @@ export default function HotelPage() {
         total,
         customer: customerName || "Cliente demo",
         createdAt: new Date().toISOString(),
+      }
+
+      const message = JSON.stringify(bookingPayload, null, 2)
+
+      const signature = await ethereum.request({
+        method: "personal_sign",
+        params: [message, firstAccount],
       })
 
-      const txHash = await ethereum.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: firstAccount,
-            to: firstAccount,
-            value: "0x0",
-            data: stringToHex(bookingPayload),
-          },
-        ],
-      })
-
-      setTransactionHash(txHash)
+      setTransactionHash(signature)
       setBookingStep("success")
     } catch (error) {
       console.error(error)
-      setWalletError("Transazione MetaMask annullata o non riuscita.")
+      setWalletError("Firma MetaMask annullata o non riuscita.")
     }
   }
 
@@ -615,7 +604,7 @@ export default function HotelPage() {
                   </div>
                   <h2 className="text-3xl font-black tracking-[-0.05em]">Connetti MetaMask</h2>
                   <p className="mx-auto mt-3 leading-7 text-neutral-600">
-                    Conferma una transazione MetaMask reale a valore zero per creare la prova tecnica della prenotazione.
+                    Firma il booking con MetaMask per creare la prova tecnica verificabile della prenotazione.
                     Al cliente verrà mostrato solo il codice Loove.
                   </p>
 
@@ -629,7 +618,7 @@ export default function HotelPage() {
                     onClick={connectWalletAndConfirm}
                     className="mt-7 w-full rounded-2xl bg-rose-500 px-6 py-4 text-sm font-black text-white shadow-[0_18px_42px_rgba(244,63,94,0.32)] transition hover:-translate-y-0.5 hover:bg-rose-600"
                   >
-                    Connetti MetaMask e firma transazione
+                    Connetti MetaMask e firma booking
                   </button>
 
                   <button
@@ -683,7 +672,7 @@ export default function HotelPage() {
                         <span className="font-black">{shortWallet(walletAddress)}</span>
                       </div>
                       <div className="flex justify-between gap-4 border-b border-neutral-100 pb-3">
-                        <span className="text-neutral-500">Tx hash</span>
+                        <span className="text-neutral-500">Firma wallet</span>
                         <span className="font-black">{shortWallet(transactionHash)}</span>
                       </div>
                       <div className="flex justify-between gap-4">
